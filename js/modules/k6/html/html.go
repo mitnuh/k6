@@ -71,3 +71,11 @@ func (s Selection) Attr(name string, def ...goja.Value) goja.Value {
 	}
 	return s.rt.ToValue(val)
 }
+
+func (s Selection) Html() goja.Value{
+	val, err := s.sel.Html()
+	if err != nil {
+		return goja.Undefined()
+	}
+	return s.rt.ToValue(val)
+}
