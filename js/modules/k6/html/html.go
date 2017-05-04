@@ -124,3 +124,7 @@ func(s Selection) Val() goja.Value {
 			return goja.Undefined()
 	}
 }
+
+func (s Selection) Closest(name string) Selection {
+	return Selection{s.rt, s.sel.Closest(name)}
+}
