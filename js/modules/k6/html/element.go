@@ -387,7 +387,7 @@ func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
 }
 
 func compileProtoElem() {
-	protoPrg = common.MustCompile("Element proto", `Object.freeze({
+	protoPrg = common.MustCompile("Element proto", `var o = {
 	get id() { return this.__elem__.id(); },
 	get nodeName() { return this.__elem__.nodeName(); },
 	get nodeType() { return this.__elem__.nodeType(); },
@@ -439,7 +439,6 @@ func compileProtoElem() {
 
 	contains: function(node) { return this.__elem__.contains(node); }
 	matches: function(str) { return this.__elem__.matches(str); }
-
-});
+}; o;
 `, true)
 }
