@@ -225,7 +225,7 @@ func TestParseHTML(t *testing.T) {
 
 	t.Run("Each", func(t *testing.T) {
 		t.Run("Func arg", func(t *testing.T) {
-			v, err := common.RunString(rt, `{ var elems = []; doc.find("#select_multi option").each(function(idx, elem) { elems[idx] = elem.innerHTML; }); elems }`)
+			v, err := common.RunString(rt, `{ var elems = []; doc.find("#select_multi option").each(function(idx, elem) { elems[idx] = elem.innerHTML(); }); elems }`)
 			if assert.NoError(t, err) {
 				var elems []string
 				rt.ExportTo(v, &elems)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/dop251/goja"
+	"github.com/loadimpact/k6/js/common"
 	gohtml "golang.org/x/net/html"
 )
 
@@ -368,17 +369,25 @@ func selToElement(sel Selection) goja.Value {
 
 	elem.Set("__proto__", proto)
 	elem.Set("__elem__", sel.rt.ToValue(&e))
+	elem.Set("id", e.Id())
+	elem.Set("nodeName", e.NodeName())
+	elem.Set("nodeType", e.NodeType())
+	elem.Set("nodeValue", e.NodeValue())
+	elem.Set("lang", e.Lang())
+	elem.Set("childElementCount", e.ChildElementCount())
+	elem.Set("classList", e.ClassList())
+	elem.Set("className", e.ClassName())
 
 	return sel.rt.ToValue(elem)
 }
 
 func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
-	// if protoPrg == nil {
-	// compileProtoElem()
-	// }
+	if protoPrg == nil {
+		compileProtoElem()
+	}
 
-	// obj, err := rt.RunProgram(protoPrg)
-	obj, err := runProtoElem(rt)
+	obj, err := rt.RunProgram(protoPrg)
+	// obj, err := runProtoElem(rt)
 	if err != nil {
 		panic(err)
 	}
@@ -386,41 +395,31 @@ func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
 	return obj, true
 }
 
-func runProtoElem(rt *goja.Runtime) (goja.Value, error) {
-	return rt.RunString(`var o = {
-	get id() { return this.__elem__.id(); },
-	get nodeName() { return this.__elem__.nodeName(); },
-	get nodeType() { return this.__elem__.nodeType(); },
-	get nodeValue() { return this.__elem__.nodeValue(); },
-	get innerHTML() { return this.__elem__.innerHTML(); },
-	get textContent() { return this.__elem__.textContent(); },
+func compileProtoElem() {
+	protoPrg = common.MustCompile("Element proto", `var o = {
+	innerHTML : function() { return this.__elem__.innerHTML(); },
+	textContent: function () { return this.__elem__.textContent(); },
+	attributes: function () { return this.__elem__.attributes(this); },
+	firstChild : function () { return this.__elem__.firstChild(); },
+	lastChild: function () { return this.__elem__.lastChild(); },
+	firstElementChild : function () { return this.__elem__.firstElementChild(); },
+	lastElementChild: function () { return this.__elem__.lastElementChild(); },
 
-	get attributes() { return this.__elem__.attributes(this); },
+	previousSibling: function () { return this.__elem__.previousSibling(); },
+	nextSibling: function () { return this.__elem__.nextSibling(); },
 
-	get firstChild() { return this.__elem__.firstChild(); },
-	get lastChild() { return this.__elem__.lastChild(); },
-	get firstElementChild() { return this.__elem__.firstElementChild(); },
-	get lastElementChild() { return this.__elem__.lastElementChild(); },
+	previousElementSibling: function () { return this.__elem__.previousElementSibling(); },
+	nextElementSibling: function  () { return this.__elem__.nextElementSibling(); },
 
-	get previousSibling() { return this.__elem__.previousSibling(); },
-	get nextSibling() { return this.__elem__.nextSibling(); },
+	parentNode: function () { return this.__elem__.parentNode(); },
+	parentElement: function () { return this.__elem__.parentElement(); },
 
-	get previousElementSibling() { return this.__elem__.previousElementSibling(); },
-	get nextElementSibling() { return this.__elem__.nextElementSibling(); },
+	childNodes: function () { return this.__elem__.childNodes(); },
+	childElementCount: function () { return this.__elem__.childElementCount(); },
+	children: function () { return this.__elem__.children(); },
 
-	get parentNode() { return this.__elem__.parentNode(); },
-	get parentElement() { return this.__elem__.parentElement(); },
-
-	get childNodes() { return this.__elem__.childNodes(); },
-	get childElementCount() { return this.__elem__.childElementCount(); },
-	get children() { return this.__elem__.children(); },
-
-	get classList() { return this.__elem__.classList(); },
-	get className() { return this.__elem__.className(); },
-
-	get lang() { return this.__elem__.lang(); },
-	get ownerDocument() { return this.__elem__.ownerDocument(); },
-	get namespaceURI() { return this.__elem__.namespaceURI(); },
+	ownerDocument: function () { return this.__elem__.ownerDocument(); },
+	namespaceURI: function () { return this.__elem__.namespaceURI(); },
 
 
 	toString: function() { return this.__elem__.toString(); },
@@ -440,5 +439,5 @@ func runProtoElem(rt *goja.Runtime) (goja.Value, error) {
 	contains: function(node) { return this.__elem__.contains(node); }
 	matches: function(str) { return this.__elem__.matches(str); }
 }; o;
-`)
+`, true)
 }

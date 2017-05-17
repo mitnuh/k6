@@ -80,44 +80,44 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("NodeValue", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("#top").get(0).firstChild.nodeValue`)
+		v, err := common.RunString(rt, `doc.find("#top").get(0).firstChild().nodeValue`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "Lorem ipsum", v.String())
 		}
 	})
 	t.Run("InnerHtml", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("span").get(0).innerHTML`)
+		v, err := common.RunString(rt, `doc.find("span").get(0).innerHTML()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "<b>test content</b>", v.String())
 		}
 	})
 	t.Run("TextContent", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("b").get(0).textContent`)
+		v, err := common.RunString(rt, `doc.find("b").get(0).textContent()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "test content", v.String())
 		}
 	})
 	t.Run("OwnerDocument", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("body").get(0).ownerDocument.nodeName`)
+		v, err := common.RunString(rt, `doc.find("body").get(0).ownerDocument().nodeName`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "#document", v.String())
 		}
 	})
 	t.Run("Attributes", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).attributes`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).attributes()`)
 		if assert.NoError(t, err) {
 			attrs := v.Export().(map[string]Attribute)
 			assert.Equal(t, "div_elem", attrs["id"].Value)
 		}
 	})
 	t.Run("FirstChild", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).firstChild.nodeValue`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).firstChild().nodeValue`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "innerfirst")
 		}
 	})
 	t.Run("LastChild", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).lastChild.nodeValue`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).lastChild().nodeValue`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "innerlast")
 		}
@@ -129,57 +129,57 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("FirstElementChild", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).firstElementChild.textContent`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).firstElementChild().textContent()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "Nullam id nisi ")
 		}
 	})
 	t.Run("LastElementChild", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).lastElementChild.textContent`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).lastElementChild().textContent()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "Maecenas augue ligula")
 		}
 	})
 	t.Run("PreviousSibling", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).previousSibling.textContent`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).previousSibling().textContent()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "pretext")
 		}
 	})
 	t.Run("NextSibling", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).nextSibling.textContent`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).nextSibling().textContent()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "aftertext")
 		}
 	})
 	t.Run("PreviousElementSibling", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).previousElementSibling.textContent`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).previousElementSibling().textContent()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "consectetur adipiscing elit")
 		}
 	})
 	t.Run("NextElementSibling", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).nextElementSibling.textContent`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).nextElementSibling().textContent()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "This is the footer.")
 		}
 	})
 	t.Run("ParentElement", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).parentElement.nodeName`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).parentElement().nodeName`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "body", v.String())
 		}
 	})
 	t.Run("ParentNode", func(t *testing.T) {
-		nodeVal, err1 := common.RunString(rt, `doc.find("html").get(0).parentNode.nodeName`)
-		nilVal, err2 := common.RunString(rt, `doc.find("html").get(0).parentElement`)
+		nodeVal, err1 := common.RunString(rt, `doc.find("html").get(0).parentNode().nodeName`)
+		nilVal, err2 := common.RunString(rt, `doc.find("html").get(0).parentElement()`)
 		if assert.NoError(t, err1) && assert.NoError(t, err2) {
 			assert.Equal(t, "#document", nodeVal.String())
 			assert.Equal(t, nil, nilVal.Export())
 		}
 	})
 	t.Run("ChildNodes", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).childNodes`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).childNodes()`)
 		if assert.NoError(t, err) {
 			nodes := valToElementList(v)
 			assert.Equal(t, 7, len(nodes))
@@ -188,7 +188,7 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("Children", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).children`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).children()`)
 		if assert.NoError(t, err) {
 			nodes := valToElementList(v)
 			assert.Equal(t, 3, len(nodes))
@@ -218,7 +218,7 @@ func TestElement(t *testing.T) {
 	})
 	t.Run("ToString", func(t *testing.T) {
 		v1, err1 := common.RunString(rt, `doc.find("div").get(0).toString()`)
-		v2, err2 := common.RunString(rt, `doc.find("div").get(0).previousSibling.toString()`)
+		v2, err2 := common.RunString(rt, `doc.find("div").get(0).previousSibling().toString()`)
 		if assert.NoError(t, err1) && assert.NoError(t, err2) {
 			assert.Equal(t, "[object html.Node]", v1.String())
 			assert.Equal(t, "[object #text]", v2.String())
