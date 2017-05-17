@@ -68,19 +68,19 @@ func TestElement(t *testing.T) {
 	assert.IsType(t, Selection{}, rt.Get("doc").Export())
 
 	t.Run("NodeName", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("#top").get(0).nodeName`)
+		v, err := common.RunString(rt, `doc.find("#top").get(0).nodeName()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "h1", v.Export())
 		}
 	})
 	t.Run("NodeType", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("#top").get(0).nodeType`)
+		v, err := common.RunString(rt, `doc.find("#top").get(0).nodeType()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "1", v.String())
 		}
 	})
 	t.Run("NodeValue", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("#top").get(0).firstChild().nodeValue`)
+		v, err := common.RunString(rt, `doc.find("#top").get(0).firstChild().nodeValue()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "Lorem ipsum", v.String())
 		}
@@ -98,7 +98,7 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("OwnerDocument", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("body").get(0).ownerDocument().nodeName`)
+		v, err := common.RunString(rt, `doc.find("body").get(0).ownerDocument().nodeName()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "#document", v.String())
 		}
@@ -111,19 +111,19 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("FirstChild", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).firstChild().nodeValue`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).firstChild().nodeValue()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "innerfirst")
 		}
 	})
 	t.Run("LastChild", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).lastChild().nodeValue`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).lastChild().nodeValue()`)
 		if assert.NoError(t, err) {
 			assert.Contains(t, v.Export(), "innerlast")
 		}
 	})
 	t.Run("ChildElementCount", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("body").get(0).childElementCount`)
+		v, err := common.RunString(rt, `doc.find("body").get(0).childElementCount()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, int64(6), v.Export())
 		}
@@ -165,13 +165,13 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("ParentElement", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).parentElement().nodeName`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).parentElement().nodeName()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "body", v.String())
 		}
 	})
 	t.Run("ParentNode", func(t *testing.T) {
-		nodeVal, err1 := common.RunString(rt, `doc.find("html").get(0).parentNode().nodeName`)
+		nodeVal, err1 := common.RunString(rt, `doc.find("html").get(0).parentNode().nodeName()`)
 		nilVal, err2 := common.RunString(rt, `doc.find("html").get(0).parentElement()`)
 		if assert.NoError(t, err1) && assert.NoError(t, err2) {
 			assert.Equal(t, "#document", nodeVal.String())
@@ -197,7 +197,7 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("ClassList", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).classList`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).classList()`)
 		if assert.NoError(t, err) {
 			clsNames := v.Export().([]string)
 			assert.Equal(t, 2, len(clsNames))
@@ -205,13 +205,13 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("ClassName", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).className`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).className()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "class1 class2", v.String())
 		}
 	})
 	t.Run("Lang", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("div").get(0).lang`)
+		v, err := common.RunString(rt, `doc.find("div").get(0).lang()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "en", v.String())
 		}
@@ -291,7 +291,7 @@ func TestElement(t *testing.T) {
 		}
 	})
 	t.Run("QuerySelector", func(t *testing.T) {
-		v, err := common.RunString(rt, `doc.find("body").get(0).querySelector("#div_elem").id`)
+		v, err := common.RunString(rt, `doc.find("body").get(0).querySelector("#div_elem").id()`)
 		if assert.NoError(t, err) {
 			assert.Equal(t, "div_elem", v.Export())
 		}

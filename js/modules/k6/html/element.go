@@ -6,7 +6,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/dop251/goja"
-	"github.com/loadimpact/k6/js/common"
 	gohtml "golang.org/x/net/html"
 )
 
@@ -26,7 +25,7 @@ type Attribute struct {
 	NamespaceURI string
 	LocalName    string
 	Prefix       string
-	OwnerElement goja.Value
+	Element      *Element
 	Value        string
 }
 
@@ -34,9 +33,9 @@ func (e Element) GetAttribute(name string) goja.Value {
 	return e.sel.Attr(name)
 }
 
-func (e Element) GetAttributeNode(self goja.Value, name string) goja.Value {
+func (e Element) GetAttributeNode(name string) goja.Value {
 	if attr := getHtmlAttr(e.node, name); attr != nil {
-		return e.rt.ToValue(Attribute{attr.Key, attr.Namespace, attr.Namespace, attr.Namespace, self, attr.Val})
+		return e.rt.ToValue(Attribute{attr.Key, attr.Namespace, attr.Namespace, attr.Namespace, &e, attr.Val})
 	} else {
 		return goja.Undefined()
 	}
@@ -50,11 +49,11 @@ func (e Element) HasAttributes() bool {
 	return e.qsel.Length() > 0 && len(e.node.Attr) > 0
 }
 
-func (e Element) Attributes(self goja.Value) map[string]Attribute {
+func (e Element) Attributes() map[string]Attribute {
 	attrs := make(map[string]Attribute)
 	for i := 0; i < len(e.node.Attr); i++ {
 		attr := e.node.Attr[i]
-		attrs[attr.Key] = Attribute{attr.Key, attr.Namespace, attr.Namespace, attr.Namespace, self, attr.Val}
+		attrs[attr.Key] = Attribute{attr.Key, attr.Namespace, attr.Namespace, attr.Namespace, &e, attr.Val}
 	}
 	return attrs
 }
@@ -332,23 +331,30 @@ func valToElementList(val goja.Value) (elems []*Element) {
 }
 
 func valToElement(v goja.Value) (*Element, bool) {
-	obj, ok := v.Export().(map[string]interface{})
+	elem, ok := v.Export().(*Element)
 
 	if !ok {
 		return nil, false
 	}
 
-	other, ok := obj["__elem__"]
+	return elem, true
+	// obj, ok := v.Export().(map[string]interface{})
 
-	if !ok {
-		return nil, false
-	}
+	// if !ok {
+	// 	return nil, false
+	// }
 
-	if elem, ok := other.(*Element); ok {
-		return elem, true
-	} else {
-		return nil, false
-	}
+	// other, ok := obj["__elem__"]
+
+	// if !ok {
+	// 	return nil, false
+	// }
+
+	// if elem, ok := other.(*Element); ok {
+	// 	return elem, true
+	// } else {
+	// 	return nil, false
+	// }
 }
 
 func selToElement(sel Selection) goja.Value {
@@ -358,86 +364,85 @@ func selToElement(sel Selection) goja.Value {
 		sel = sel.First()
 	}
 
-	elem := sel.rt.NewObject()
+	// elem := sel.rt.NewObject()
 
-	e := Element{&sel, sel.rt, sel.sel, sel.sel.Nodes[0]}
+	elem := Element{&sel, sel.rt, sel.sel, sel.sel.Nodes[0]}
 
-	proto, ok := initJsElem(sel.rt)
-	if !ok {
-		return goja.Undefined()
-	}
+	// proto, ok := initJsElem(sel.rt)
+	// if !ok {
+	// return goja.Undefined()
+	// }
 
-	elem.Set("__proto__", proto)
-	elem.Set("__elem__", sel.rt.ToValue(&e))
-	elem.Set("id", e.Id())
-	elem.Set("nodeName", e.NodeName())
-	elem.Set("nodeType", e.NodeType())
-	elem.Set("nodeValue", e.NodeValue())
-	elem.Set("lang", e.Lang())
-	elem.Set("childElementCount", e.ChildElementCount())
-	elem.Set("classList", e.ClassList())
-	elem.Set("className", e.ClassName())
+	// elem.Set("__proto__", proto)
+	// elem.Set("__elem__", sel.rt.ToValue(&e))
+	// elem.Set("id", e.Id())
+	// elem.Set("nodeName", e.NodeName())
+	// elem.Set("nodeType", e.NodeType())
+	// elem.Set("nodeValue", e.NodeValue())
+	// elem.Set("lang", e.Lang())
+	// elem.Set("childElementCount", e.ChildElementCount())
+	// elem.Set("classList", e.ClassList())
+	// elem.Set("className", e.ClassName())
 
-	return sel.rt.ToValue(elem)
+	return sel.rt.ToValue(&elem)
 }
 
-func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
-	if protoPrg == nil {
-		compileProtoElem()
-	}
+// func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
+// 	if protoPrg == nil {
+// 		compileProtoElem()
+// 	}
 
-	obj, err := rt.RunProgram(protoPrg)
-	// obj, err := runProtoElem(rt)
-	if err != nil {
-		panic(err)
-	}
+// 	obj, err := rt.RunProgram(protoPrg)
+// 	// obj, err := runProtoElem(rt)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	return obj, true
-}
+// 	return obj, true
+// }
 
-func compileProtoElem() {
-	protoPrg = common.MustCompile("Element proto", `var o = {
-	innerHTML : function() { return this.__elem__.innerHTML(); },
-	textContent: function () { return this.__elem__.textContent(); },
-	attributes: function () { return this.__elem__.attributes(this); },
-	firstChild : function () { return this.__elem__.firstChild(); },
-	lastChild: function () { return this.__elem__.lastChild(); },
-	firstElementChild : function () { return this.__elem__.firstElementChild(); },
-	lastElementChild: function () { return this.__elem__.lastElementChild(); },
+// func compileProtoElem() {
+// 	protoPrg = common.MustCompile("Element proto", `var o = {
+// 	innerHTML : function() { return this.__elem__.innerHTML(); },
+// 	textContent: function () { return this.__elem__.textContent(); },
+// 	attributes: function () { return this.__elem__.attributes(this); },
+// 	firstChild : function () { return this.__elem__.firstChild(); },
+// 	lastChild: function () { return this.__elem__.lastChild(); },
+// 	firstElementChild : function () { return this.__elem__.firstElementChild(); },
+// 	lastElementChild: function () { return this.__elem__.lastElementChild(); },
 
-	previousSibling: function () { return this.__elem__.previousSibling(); },
-	nextSibling: function () { return this.__elem__.nextSibling(); },
+// 	previousSibling: function () { return this.__elem__.previousSibling(); },
+// 	nextSibling: function () { return this.__elem__.nextSibling(); },
 
-	previousElementSibling: function () { return this.__elem__.previousElementSibling(); },
-	nextElementSibling: function  () { return this.__elem__.nextElementSibling(); },
+// 	previousElementSibling: function () { return this.__elem__.previousElementSibling(); },
+// 	nextElementSibling: function  () { return this.__elem__.nextElementSibling(); },
 
-	parentNode: function () { return this.__elem__.parentNode(); },
-	parentElement: function () { return this.__elem__.parentElement(); },
+// 	parentNode: function () { return this.__elem__.parentNode(); },
+// 	parentElement: function () { return this.__elem__.parentElement(); },
 
-	childNodes: function () { return this.__elem__.childNodes(); },
-	childElementCount: function () { return this.__elem__.childElementCount(); },
-	children: function () { return this.__elem__.children(); },
+// 	childNodes: function () { return this.__elem__.childNodes(); },
+// 	childElementCount: function () { return this.__elem__.childElementCount(); },
+// 	children: function () { return this.__elem__.children(); },
 
-	ownerDocument: function () { return this.__elem__.ownerDocument(); },
-	namespaceURI: function () { return this.__elem__.namespaceURI(); },
+// 	ownerDocument: function () { return this.__elem__.ownerDocument(); },
+// 	namespaceURI: function () { return this.__elem__.namespaceURI(); },
 
+// 	toString: function() { return this.__elem__.toString(); },
+// 	hasAttribute: function(name) { return this.__elem__.hasAttribute(name); },
+// 	getAttribute: function(name) { return this.__elem__.getAttribute(name); },
+// 	getAttributeNode: function(name) { return this.__elem__.getAttributeNode(this, name); },
+// 	hasAttributes: function() { return this.__elem__.hasAttributes(); },
+// 	hasChildNodes: function() { return this.__elem__.hasChildNodes(); },
+// 	isSameNode: function(val) { return this.__elem__.isSameNode(val); },
+// 	isEqualNode: function(val) { return this.__elem__.isEqualNode(val); },
+// 	getElementsByClassName: function(val) { return this.__elem__.getElementsByClassName(val); },
+// 	getElementsByTagName: function(val) { return this.__elem__.getElementsByTagName(val); },
 
-	toString: function() { return this.__elem__.toString(); },
-	hasAttribute: function(name) { return this.__elem__.hasAttribute(name); },
-	getAttribute: function(name) { return this.__elem__.getAttribute(name); },
-	getAttributeNode: function(name) { return this.__elem__.getAttributeNode(this, name); },
-	hasAttributes: function() { return this.__elem__.hasAttributes(); },
-	hasChildNodes: function() { return this.__elem__.hasChildNodes(); },
-	isSameNode: function(val) { return this.__elem__.isSameNode(val); },
-	isEqualNode: function(val) { return this.__elem__.isEqualNode(val); },
-	getElementsByClassName: function(val) { return this.__elem__.getElementsByClassName(val); },
-	getElementsByTagName: function(val) { return this.__elem__.getElementsByTagName(val); },
+// 	querySelector: function(val) { return this.__elem__.querySelector(val); },
+// 	querySelectorAll: function(val) { return this.__elem__.querySelectorAll(val); },
 
-	querySelector: function(val) { return this.__elem__.querySelector(val); },
-	querySelectorAll: function(val) { return this.__elem__.querySelectorAll(val); },
-
-	contains: function(node) { return this.__elem__.contains(node); }
-	matches: function(str) { return this.__elem__.matches(str); }
-}; o;
-`, true)
-}
+// 	contains: function(node) { return this.__elem__.contains(node); }
+// 	matches: function(str) { return this.__elem__.matches(str); }
+// }; o;
+// `, true)
+// }
