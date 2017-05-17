@@ -6,7 +6,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/dop251/goja"
-	"github.com/loadimpact/k6/js/common"
 	gohtml "golang.org/x/net/html"
 )
 
@@ -374,11 +373,12 @@ func selToElement(sel Selection) goja.Value {
 }
 
 func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
-	if protoPrg == nil {
-		compileProtoElem()
-	}
+	// if protoPrg == nil {
+	// compileProtoElem()
+	// }
 
-	obj, err := rt.RunProgram(protoPrg)
+	// obj, err := rt.RunProgram(protoPrg)
+	obj, err := runProtoElem(rt)
 	if err != nil {
 		panic(err)
 	}
@@ -386,8 +386,8 @@ func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
 	return obj, true
 }
 
-func compileProtoElem() {
-	protoPrg = common.MustCompile("Element proto", `var o = {
+func runProtoElem(rt *goja.Runtime) (goja.Value, error) {
+	return rt.RunString(`Object.freeze({
 	get id() { return this.__elem__.id(); },
 	get nodeName() { return this.__elem__.nodeName(); },
 	get nodeType() { return this.__elem__.nodeType(); },
@@ -439,6 +439,6 @@ func compileProtoElem() {
 
 	contains: function(node) { return this.__elem__.contains(node); }
 	matches: function(str) { return this.__elem__.matches(str); }
-}; o;
-`, true)
+});
+`)
 }

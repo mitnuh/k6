@@ -57,7 +57,7 @@ func BenchmarkBuildSpeed(b *testing.B) {
 	ctx := common.WithRuntime(context.Background(), rt)
 	rt.Set("src", benchmarkElemHTML)
 	rt.Set("html", common.Bind(rt, &HTML{}, &ctx))
-	compileProtoElem()
+	// compileProtoElem()
 
 	if _, err := common.RunString(rt, `let doc = html.parseHTML(src)`); err != nil {
 		return

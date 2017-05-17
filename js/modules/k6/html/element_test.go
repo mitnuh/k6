@@ -60,7 +60,7 @@ func TestElement(t *testing.T) {
 	ctx := common.WithRuntime(context.Background(), rt)
 	rt.Set("src", testHTMLElem)
 	rt.Set("html", common.Bind(rt, &HTML{}, &ctx))
-	compileProtoElem()
+	// compileProtoElem()
 
 	_, err := common.RunString(rt, `let doc = html.parseHTML(src)`)
 
