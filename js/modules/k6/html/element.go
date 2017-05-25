@@ -6,11 +6,21 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/dop251/goja"
+	"github.com/loadimpact/k6/js/common"
 	gohtml "golang.org/x/net/html"
 )
 
+type elementWrapper struct {
+	init       func()
+	wrapToJs   func(sel Selection) goja.Value
+	unwrapToGo func(val goja.Value) (*Element, bool)
+}
+
 var (
-	protoPrg *goja.Program
+	accessorPrg *goja.Program
+	presetsPrg  *goja.Program
+	protoStr    string
+	elemWrap    *elementWrapper
 )
 
 type Element struct {
@@ -331,6 +341,37 @@ func valToElementList(val goja.Value) (elems []*Element) {
 }
 
 func valToElement(v goja.Value) (*Element, bool) {
+	if elemWrap == nil {
+		setElementWrapper(elementWrapper{nil, wrapElemStruct, unwrapElementStruct})
+	}
+
+	return elemWrap.unwrapToGo(v)
+}
+
+func selToElement(sel Selection) goja.Value {
+	if elemWrap == nil {
+		setElementWrapper(elementWrapper{nil, wrapElemStruct, unwrapElementStruct})
+	}
+
+	if sel.sel.Length() == 0 {
+		return goja.Undefined()
+	} else if sel.sel.Length() > 1 {
+		sel = sel.First()
+	}
+
+	return elemWrap.wrapToJs(sel)
+}
+
+// element wrappers/unwrappers for benchmarking
+
+func setElementWrapper(wrapper elementWrapper) {
+	elemWrap = &wrapper
+	if elemWrap.init != nil {
+		elemWrap.init()
+	}
+}
+
+func unwrapElementStruct(v goja.Value) (*Element, bool) {
 	elem, ok := v.Export().(*Element)
 
 	if !ok {
@@ -338,111 +379,162 @@ func valToElement(v goja.Value) (*Element, bool) {
 	}
 
 	return elem, true
-	// obj, ok := v.Export().(map[string]interface{})
-
-	// if !ok {
-	// 	return nil, false
-	// }
-
-	// other, ok := obj["__elem__"]
-
-	// if !ok {
-	// 	return nil, false
-	// }
-
-	// if elem, ok := other.(*Element); ok {
-	// 	return elem, true
-	// } else {
-	// 	return nil, false
-	// }
 }
 
-func selToElement(sel Selection) goja.Value {
-	if sel.sel.Length() == 0 {
-		return goja.Undefined()
-	} else if sel.sel.Length() > 1 {
-		sel = sel.First()
-	}
-
-	// elem := sel.rt.NewObject()
-
+func wrapElemStruct(sel Selection) goja.Value {
 	elem := Element{&sel, sel.rt, sel.sel, sel.sel.Nodes[0]}
-
-	// proto, ok := initJsElem(sel.rt)
-	// if !ok {
-	// return goja.Undefined()
-	// }
-
-	// elem.Set("__proto__", proto)
-	// elem.Set("__elem__", sel.rt.ToValue(&e))
-	// elem.Set("id", e.Id())
-	// elem.Set("nodeName", e.NodeName())
-	// elem.Set("nodeType", e.NodeType())
-	// elem.Set("nodeValue", e.NodeValue())
-	// elem.Set("lang", e.Lang())
-	// elem.Set("childElementCount", e.ChildElementCount())
-	// elem.Set("classList", e.ClassList())
-	// elem.Set("className", e.ClassName())
-
 	return sel.rt.ToValue(&elem)
 }
 
-// func initJsElem(rt *goja.Runtime) (goja.Value, bool) {
-// 	if protoPrg == nil {
-// 		compileProtoElem()
-// 	}
+func unwrapElementProp(v goja.Value) (*Element, bool) {
+	obj, ok := v.Export().(map[string]interface{})
 
-// 	obj, err := rt.RunProgram(protoPrg)
-// 	// obj, err := runProtoElem(rt)
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	if !ok {
+		return nil, false
+	}
 
-// 	return obj, true
-// }
+	other, ok := obj["__elem__"]
 
-// func compileProtoElem() {
-// 	protoPrg = common.MustCompile("Element proto", `var o = {
-// 	innerHTML : function() { return this.__elem__.innerHTML(); },
-// 	textContent: function () { return this.__elem__.textContent(); },
-// 	attributes: function () { return this.__elem__.attributes(this); },
-// 	firstChild : function () { return this.__elem__.firstChild(); },
-// 	lastChild: function () { return this.__elem__.lastChild(); },
-// 	firstElementChild : function () { return this.__elem__.firstElementChild(); },
-// 	lastElementChild: function () { return this.__elem__.lastElementChild(); },
+	if !ok {
+		return nil, false
+	}
 
-// 	previousSibling: function () { return this.__elem__.previousSibling(); },
-// 	nextSibling: function () { return this.__elem__.nextSibling(); },
+	if elem, ok := other.(*Element); ok {
+		return elem, true
+	} else {
+		return nil, false
+	}
+}
 
-// 	previousElementSibling: function () { return this.__elem__.previousElementSibling(); },
-// 	nextElementSibling: function  () { return this.__elem__.nextElementSibling(); },
+func wrapCompiledAccessorElem(sel Selection) goja.Value {
+	elem := Element{&sel, sel.rt, sel.sel, sel.sel.Nodes[0]}
 
-// 	parentNode: function () { return this.__elem__.parentNode(); },
-// 	parentElement: function () { return this.__elem__.parentElement(); },
+	obj := sel.rt.NewObject()
+	proto, err := sel.rt.RunProgram(accessorPrg)
+	if err != nil {
+		return goja.Undefined()
+	}
 
-// 	childNodes: function () { return this.__elem__.childNodes(); },
-// 	childElementCount: function () { return this.__elem__.childElementCount(); },
-// 	children: function () { return this.__elem__.children(); },
+	obj.Set("__proto__", proto)
+	obj.Set("__elem__", sel.rt.ToValue(&elem))
 
-// 	ownerDocument: function () { return this.__elem__.ownerDocument(); },
-// 	namespaceURI: function () { return this.__elem__.namespaceURI(); },
+	return sel.rt.ToValue(obj)
+}
 
-// 	toString: function() { return this.__elem__.toString(); },
-// 	hasAttribute: function(name) { return this.__elem__.hasAttribute(name); },
-// 	getAttribute: function(name) { return this.__elem__.getAttribute(name); },
-// 	getAttributeNode: function(name) { return this.__elem__.getAttributeNode(this, name); },
-// 	hasAttributes: function() { return this.__elem__.hasAttributes(); },
-// 	hasChildNodes: function() { return this.__elem__.hasChildNodes(); },
-// 	isSameNode: function(val) { return this.__elem__.isSameNode(val); },
-// 	isEqualNode: function(val) { return this.__elem__.isEqualNode(val); },
-// 	getElementsByClassName: function(val) { return this.__elem__.getElementsByClassName(val); },
-// 	getElementsByTagName: function(val) { return this.__elem__.getElementsByTagName(val); },
+func wrapUncompiledAccessorElem(sel Selection) goja.Value {
+	elem := &Element{&sel, sel.rt, sel.sel, sel.sel.Nodes[0]}
 
-// 	querySelector: function(val) { return this.__elem__.querySelector(val); },
-// 	querySelectorAll: function(val) { return this.__elem__.querySelectorAll(val); },
+	obj := sel.rt.NewObject()
+	proto, err := sel.rt.RunScript("Elem", protoStr)
+	if err != nil {
+		return goja.Undefined()
+	}
 
-// 	contains: function(node) { return this.__elem__.contains(node); }
-// 	matches: function(str) { return this.__elem__.matches(str); }
-// }; o;
-// `, true)
-// }
+	obj.Set("__proto__", proto)
+	obj.Set("__elem__", sel.rt.ToValue(elem))
+
+	return sel.rt.ToValue(obj)
+}
+
+func wrapCompiledPresetElem(sel Selection) goja.Value {
+	elem := &Element{&sel, sel.rt, sel.sel, sel.sel.Nodes[0]}
+
+	obj := sel.rt.NewObject()
+	proto, err := sel.rt.RunProgram(presetsPrg)
+	if err != nil {
+		return goja.Undefined()
+	}
+
+	obj.Set("__proto__", proto)
+	obj.Set("__elem__", sel.rt.ToValue(elem))
+	obj.Set("id", elem.Id())
+	obj.Set("nodeName", elem.NodeName())
+	obj.Set("nodeType", elem.NodeType())
+	obj.Set("nodeValue", elem.NodeValue())
+	obj.Set("lang", elem.Lang())
+	obj.Set("childElementCount", elem.ChildElementCount())
+	obj.Set("classList", elem.ClassList())
+	obj.Set("className", elem.ClassName())
+
+	return sel.rt.ToValue(obj)
+}
+
+func initAccessorPrg() {
+	accessorPrg = common.MustCompile("Elem", `var o = {`+jsAccessorProperties+jsSharedFns+`}; o;`, true)
+}
+
+func initAccessorScriptStr() {
+	protoStr = `var o = {` + jsAccessorProperties + jsSharedFns + `}; o;`
+}
+
+func initPresetsPrg() {
+	presetsPrg = common.MustCompile("Elem", `var o = {`+jsPresetAndFnProperties+jsSharedFns+`}; o;`, true)
+}
+
+var (
+	jsAccessorProperties = `
+	get id() { return this.__elem__.id(); },
+	get nodeName() { return this.__elem__.nodeName(); },
+	get nodeType() { return this.__elem__.nodeType(); },
+	get nodeValue() { return this.__elem__.nodeValue(); },
+	get innerHTML() { return this.__elem__.innerHTML(); },
+	get textContent() { return this.__elem__.textContent(); },
+	get attributes() { return this.__elem__.attributes(this); },
+	get firstChild() { return this.__elem__.firstChild(); },
+	get lastChild() { return this.__elem__.lastChild(); },
+	get firstElementChild() { return this.__elem__.firstElementChild(); },
+	get lastElementChild() { return this.__elem__.lastElementChild(); },
+	get previousSibling() { return this.__elem__.previousSibling(); },
+	get nextSibling() { return this.__elem__.nextSibling(); },
+	get previousElementSibling() { return this.__elem__.previousElementSibling(); },
+	get nextElementSibling() { return this.__elem__.nextElementSibling(); },
+	get parentNode() { return this.__elem__.parentNode(); },
+	get parentElement() { return this.__elem__.parentElement(); },
+	get childNodes() { return this.__elem__.childNodes(); },
+	get childElementCount() { return this.__elem__.childElementCount(); },
+	get children() { return this.__elem__.children(); },
+	get classList() { return this.__elem__.classList(); },
+	get className() { return this.__elem__.className(); },
+	get lang() { return this.__elem__.lang(); },
+	get ownerDocument() { return this.__elem__.ownerDocument(); },
+	get namespaceURI() { return this.__elem__.namespaceURI(); },
+`
+
+	jsPresetAndFnProperties = `
+	innerHTML : function() { return this.__elem__.innerHTML(); },
+	textContent: function () { return this.__elem__.textContent(); },
+	attributes: function () { return this.__elem__.attributes(this); },
+	firstChild : function () { return this.__elem__.firstChild(); },
+	lastChild: function () { return this.__elem__.lastChild(); },
+	firstElementChild : function () { return this.__elem__.firstElementChild(); },
+	lastElementChild: function () { return this.__elem__.lastElementChild(); },
+	previousSibling: function () { return this.__elem__.previousSibling(); },
+	nextSibling: function () { return this.__elem__.nextSibling(); },
+	previousElementSibling: function () { return this.__elem__.previousElementSibling(); },
+	nextElementSibling: function  () { return this.__elem__.nextElementSibling(); },
+	parentNode: function () { return this.__elem__.parentNode(); },
+	parentElement: function () { return this.__elem__.parentElement(); },
+	childNodes: function () { return this.__elem__.childNodes(); },
+	childElementCount: function () { return this.__elem__.childElementCount(); },
+	children: function () { return this.__elem__.children(); },
+	ownerDocument: function () { return this.__elem__.ownerDocument(); },
+	namespaceURI: function () { return this.__elem__.namespaceURI(); },
+`
+
+	jsSharedFns = `
+	toString: function() { return this.__elem__.toString(); },
+	hasAttribute: function(name) { return this.__elem__.hasAttribute(name); },
+	getAttribute: function(name) { return this.__elem__.getAttribute(name); },
+	getAttributeNode: function(name) { return this.__elem__.getAttributeNode(this, name); },
+	hasAttributes: function() { return this.__elem__.hasAttributes(); },
+	hasChildNodes: function() { return this.__elem__.hasChildNodes(); },
+	isSameNode: function(val) { return this.__elem__.isSameNode(val); },
+	isEqualNode: function(val) { return this.__elem__.isEqualNode(val); },
+	getElementsByClassName: function(val) { return this.__elem__.getElementsByClassName(val); },
+	getElementsByTagName: function(val) { return this.__elem__.getElementsByTagName(val); },
+	querySelector: function(val) { return this.__elem__.querySelector(val); },
+	querySelectorAll: function(val) { return this.__elem__.querySelectorAll(val); },
+	contains: function(node) { return this.__elem__.contains(node); }
+	matches: function(str) { return this.__elem__.matches(str); }
+	`
+)

@@ -21,7 +21,6 @@
 package html
 
 import (
-	// 	"fmt"
 	"context"
 	"errors"
 	"testing"
@@ -42,10 +41,12 @@ const benchmarkElemHTML = `
 </body>
 `
 
-func buildElemBenchmark(num int, rt *goja.Runtime, prg *goja.Program, b *testing.B) {
-	for i := 0; i < num; i++ {
-		if _, err := rt.RunProgram(prg); err != nil {
+func buildElemBenchmark(wrapper elementWrapper, rt *goja.Runtime, prg *goja.Program, b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		if val, err := rt.RunProgram(prg); err != nil {
 			panic(errors.New("Unable to create element"))
+		} else if elem, ok := wrapper.unwrapToGo(val); !ok || elem.NodeName() != "body" {
+			panic(errors.New("Found wrong element"))
 		}
 	}
 }
@@ -57,7 +58,6 @@ func BenchmarkBuildSpeed(b *testing.B) {
 	ctx := common.WithRuntime(context.Background(), rt)
 	rt.Set("src", benchmarkElemHTML)
 	rt.Set("html", common.Bind(rt, &HTML{}, &ctx))
-	// compileProtoElem()
 
 	if _, err := common.RunString(rt, `let doc = html.parseHTML(src)`); err != nil {
 		return
@@ -67,12 +67,16 @@ func BenchmarkBuildSpeed(b *testing.B) {
 		return
 	}
 
+	elemWrappers := map[string]elementWrapper{
+		"Go Struct":                 elementWrapper{nil, wrapElemStruct, unwrapElementStruct},
+		"Compiled AccessorWrapper":  elementWrapper{initAccessorPrg, wrapCompiledAccessorElem, unwrapElementProp},
+		"RunString AccessorWrapper": elementWrapper{initAccessorScriptStr, wrapUncompiledAccessorElem, unwrapElementProp},
+		"Compiled PresetWrapper":    elementWrapper{initPresetsPrg, wrapCompiledPresetElem, unwrapElementProp},
+	}
+
 	prg := common.MustCompile("GetElem", `body.get(0)`, true)
-	b.Run("BenchmarkElement100", func(b *testing.B) { buildElemBenchmark(100, rt, prg, b) })
-	b.Run("BenchmarkElement500", func(b *testing.B) { buildElemBenchmark(100, rt, prg, b) })
-	b.Run("BenchmarkElement1000", func(b *testing.B) { buildElemBenchmark(1000, rt, prg, b) })
-	b.Run("BenchmarkElement5000", func(b *testing.B) { buildElemBenchmark(5000, rt, prg, b) })
-	b.Run("BenchmarkElement10000", func(b *testing.B) { buildElemBenchmark(10000, rt, prg, b) })
-	// b.Run("BenchmarkElement500000", func(b *testing.B) { buildElemBenchmark(50000, rt, prg, b) })
-	// b.Run("BenchmarkElement1000000", func(b *testing.B) { buildElemBenchmark(100000, rt, prg, b) })
+	for name, wrapper := range elemWrappers {
+		setElementWrapper(wrapper)
+		b.Run(name, func(b *testing.B) { buildElemBenchmark(wrapper, rt, prg, b) })
+	}
 }
