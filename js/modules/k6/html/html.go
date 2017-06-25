@@ -280,7 +280,7 @@ func (s Selection) Val() goja.Value {
 	case "textarea":
 		return s.Html()
 
-	case Button:
+	case ButtonTagName:
 		return s.Attr("value")
 
 	case "option":
